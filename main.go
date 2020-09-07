@@ -1,12 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"strconv"
+)
 
-	"github.com/gorilla/mux"
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "golang"
+	password = "golang"
+	dbname   = "golang"
 )
 
 func get(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +81,23 @@ func main() {
 	api.HandleFunc("", post).Methods(http.MethodPost)
 	api.HandleFunc("", put).Methods(http.MethodPut)
 	api.HandleFunc("", delete).Methods(http.MethodDelete)
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Successfully connected!")
 
 	api.HandleFunc("/user/{userID}/comment/{commentID}", params).Methods(http.MethodGet)
 

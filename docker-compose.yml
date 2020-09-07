@@ -1,0 +1,26 @@
+version: '3.6'
+services:
+  go:
+    image: golang
+    working_dir: /go/src/app
+    command: "go run main.go"
+    volumes:
+      - ".:/go/src/app"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:12-alpine
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - 5432:5432
+    environment:
+      - PGDATA=/data/postgres
+      - POSTGRES_DB=golang
+      - POSTGRES_USER=golang
+      - POSTGRES_PASSWORD=golang
+
+volumes:
+  var:
+  postgres:
