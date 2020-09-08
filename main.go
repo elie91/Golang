@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -75,17 +76,16 @@ func params(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := mux.NewRouter()
-
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("", get).Methods(http.MethodGet)
 	api.HandleFunc("", post).Methods(http.MethodPost)
 	api.HandleFunc("", put).Methods(http.MethodPut)
 	api.HandleFunc("", delete).Methods(http.MethodDelete)
+	api.HandleFunc("/user/{userID}/comment/{commentID}", params).Methods(http.MethodGet)
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
-
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)
@@ -96,10 +96,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Connected to postgres!")
 
-	fmt.Println("Successfully connected!")
-
-	api.HandleFunc("/user/{userID}/comment/{commentID}", params).Methods(http.MethodGet)
+	sqlStatement := `
+		CREATE TABLE IF NOT EXISTS ARTICLE (
+			id int primary key, 
+			libelle varchar(255) not null,
+			price float not null
+		)`
+	_, err = db.Exec(sqlStatement)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("tables created!")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
