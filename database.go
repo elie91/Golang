@@ -17,17 +17,17 @@ const (
 	dbname   = "golang"
 )
 
-func connectToDatabase() {
+func connectToDatabase() *sql.DB {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
 	db, err := sql.Open("postgres", psqlInfo)
+
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
@@ -36,7 +36,6 @@ func connectToDatabase() {
 	fmt.Println("Connected to postgres!")
 
 	sqlStatement := `
-
 		CREATE TABLE IF NOT EXISTS ARTICLE (
 			id serial, 
 			date_start date not null,
@@ -52,6 +51,8 @@ func connectToDatabase() {
 		panic(err)
 	}
 	fmt.Println("tables created!")
+
+	_, _ = db.Exec("TRUNCATE article")
 
 	for i := 0; i < 10; i++ {
 		query := `
@@ -73,4 +74,6 @@ func connectToDatabase() {
 	}
 
 	fmt.Println("fixtures loaded")
+
+	return db
 }
