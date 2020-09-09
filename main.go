@@ -115,8 +115,8 @@ func getArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 
-
 func main() {
+	launchRoutine()
 	db = connectToDatabase()
 	r := mux.NewRouter()
 	api := r.PathPrefix("/api/article").Subrouter()
@@ -125,5 +125,8 @@ func main() {
 	api.HandleFunc("/{id}", updateArticle).Methods(http.MethodPut)
 	api.HandleFunc("/{id}", deleteArticle).Methods(http.MethodDelete)
 	api.HandleFunc("/{id}", getArticle).Methods(http.MethodGet)
+
+
+
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
