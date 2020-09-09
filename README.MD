@@ -17,3 +17,6 @@ Réaliser un programme gérant l’état d’un jeu. Est attendu:
 - [Cours interatif sur les bases](https://tour.golang.org/welcome/1)
 - [Liste d'example](https://gobyexample.com/)
 - [Documentation](https://golang.org/)
+
+## Commandes
+- go run *.go

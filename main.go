@@ -4,72 +4,114 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/bdwilliams/go-jsonify/jsonify"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 )
 
 var (
 	db *sql.DB
 )
 
-func get(w http.ResponseWriter, r *http.Request) {
-	rows, _ := db.Query("SELECT * from article")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	payload := jsonify.Jsonify(rows)
-	json.NewEncoder(w).Encode(payload)
+type Article struct {
+	ID        int    `json:"id"`
+	Libelle string `json:"libelle"`
+	StartPrice int `json:"start_price"`
+	CurrentPrice int `json:"current_price"`
 }
 
-func post(w http.ResponseWriter, r *http.Request) {
+func getAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(`{"message": "post called"}`))
-}
+	var articles []Article
 
-func put(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte(`{"message": "put called"}`))
-}
-
-func delete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "delete called"}`))
-}
-
-func params(w http.ResponseWriter, r *http.Request) {
-	pathParams := mux.Vars(r)
-	w.Header().Set("Content-Type", "application/json")
-
-	userID := -1
-	var err error
-	if val, ok := pathParams["userID"]; ok {
-		userID, err = strconv.Atoi(val)
+	result, err := db.Query("SELECT * from article")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer result.Close()
+	for result.Next() {
+		var article Article
+		err := result.Scan(&article.ID, &article.Libelle, &article.StartPrice, &article.CurrentPrice)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "need a number"}`))
-			return
+			panic(err.Error())
+		}
+		articles = append(articles, article)
+	}
+	json.NewEncoder(w).Encode(articles)
+}
+
+func newArticle(w http.ResponseWriter, r *http.Request) {
+	stmt, err := db.Prepare("INSERT INTO article(id,libelle, start_price, current_price) VALUES($1, $2, $3, $4)")
+	if err != nil {
+		panic(err.Error())
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err.Error())
+	}
+	keyVal := make(map[string]string)
+	json.Unmarshal(body, &keyVal)
+	id := keyVal["id"]
+	libelle := keyVal["libelle"]
+	startPrice := keyVal["startprice"]
+	currentPrice := keyVal["currentprice"]
+	_, err = stmt.Exec(id, libelle,  startPrice, currentPrice)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Fprintf(w, "New article was created")
+}
+
+func updateArticle(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	stmt, err := db.Prepare("UPDATE article SET current_price = $1 WHERE id = $2")
+	if err != nil {
+		panic(err.Error())
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err.Error())
+	}
+	keyVal := make(map[string]string)
+	json.Unmarshal(body, &keyVal)
+	newPrice := keyVal["currentprice"]
+	_, err = stmt.Exec(newPrice, params["id"])
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Fprintf(w, "Article with ID = %s was updated", params["id"])
+}
+
+func deleteArticle(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	stmt, err := db.Prepare("DELETE FROM article WHERE id = $1")
+	if err != nil {
+		panic(err.Error())
+	}
+	_, err = stmt.Exec(params["id"])
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Fprintf(w, "Article with ID = %s was deleted", params["id"])
+}
+
+func getArticle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	result, err := db.Query("SELECT * FROM article WHERE id = $1", params["id"])
+	if err != nil {
+		panic(err.Error())
+	}
+	defer result.Close()
+	var article Article
+	for result.Next() {
+		err := result.Scan(&article.ID, &article.Libelle, &article.StartPrice, &article.CurrentPrice)
+		if err != nil {
+			panic(err.Error())
 		}
 	}
-
-	commentID := -1
-	if val, ok := pathParams["commentID"]; ok {
-		commentID, err = strconv.Atoi(val)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "need a number"}`))
-			return
-		}
-	}
-
-	query := r.URL.Query()
-	location := query.Get("location")
-
-	w.Write([]byte(fmt.Sprintf(`{"userID": %d, "commentID": %d, "location": "%s" }`, userID, commentID, location)))
+	json.NewEncoder(w).Encode(article)
 }
 
 
@@ -77,11 +119,11 @@ func params(w http.ResponseWriter, r *http.Request) {
 func main() {
 	db = connectToDatabase()
 	r := mux.NewRouter()
-	api := r.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("", get).Methods(http.MethodGet)
-	api.HandleFunc("", post).Methods(http.MethodPost)
-	api.HandleFunc("", put).Methods(http.MethodPut)
-	api.HandleFunc("", delete).Methods(http.MethodDelete)
-	api.HandleFunc("/user/{userID}/comment/{commentID}", params).Methods(http.MethodGet)
+	api := r.PathPrefix("/api/article").Subrouter()
+	api.HandleFunc("", getAll).Methods(http.MethodGet)
+	api.HandleFunc("", newArticle).Methods(http.MethodPost)
+	api.HandleFunc("/{id}", updateArticle).Methods(http.MethodPut)
+	api.HandleFunc("/{id}", deleteArticle).Methods(http.MethodDelete)
+	api.HandleFunc("/{id}", getArticle).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"strconv"
-	"time"
-
 )
 
 const (
@@ -38,11 +36,7 @@ func connectToDatabase() *sql.DB {
 	sqlStatement := `
 		CREATE TABLE IF NOT EXISTS ARTICLE (
 			id serial, 
-			date_start date not null,
-			date_end date not null,
 			libelle varchar(255) not null,
-			description text,
-			immediate_price float not null,
 			start_price float not null,
 			current_price float
 		)`
@@ -56,16 +50,13 @@ func connectToDatabase() *sql.DB {
 
 	for i := 0; i < 10; i++ {
 		query := `
-			INSERT INTO article (id, date_start, date_end, libelle, description, immediate_price, start_price)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO article (id, libelle, start_price, current_price)
+			VALUES ($1, $2, $3, $4)
 		`
 		_, err = db.Exec(query,
 			i,
-			time.Date(2020, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
-			time.Date(2020, time.Month(2), 23, 1, 10, 30, 0, time.UTC),
 			"article-" + strconv.Itoa(i) ,
-			"ceci est une description",
-			3000,
+			1200,
 			1200,
 		)
 		if err != nil {
