@@ -20,3 +20,4 @@ Réaliser un programme gérant l’état d’un jeu. Est attendu:
 
 ## Commandes
 - go run *.go
+- ab -n 1000 -c 40 -T application/json -p data.json http://localhost:8080/api/article/1
